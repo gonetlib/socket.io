@@ -46,7 +46,7 @@ func (s *server) WithNamespace(nsp string) Namespace {
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sess, err := s.parseRequest(r)
 	if err != nil {
-		log4go.Error("parse request:", err)
+		log4go.Error("parse request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
@@ -87,7 +87,7 @@ func (s *server) handlePolling(w http.ResponseWriter, r *http.Request, sess *Ses
 }
 
 func (s *server) parseRequest(r *http.Request) (sess *Session, err error) {
-	log4go.Debug("parse request", r.URL.Query())
+	log4go.Debug("parse request: %+v", r.URL.Query())
 	sess = &Session{
 		TransportID: r.URL.Query().Get("t"),
 		Sid:         r.URL.Query().Get("sid"),

@@ -24,6 +24,7 @@ func (h *EngineIOHandler) processText(msg []byte) (err error) {
 		log4go.Error("empty message")
 		return errors.New("empty message")
 	}
+	log4go.Debug("engine.io message: '%s'", msg)
 	switch msg[0] {
 	case '0': // open
 	case '1': // close

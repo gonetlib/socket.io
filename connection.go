@@ -94,6 +94,7 @@ func (c *gorillaWebsocketConnection) Serve() (err error) {
 	for {
 		// c.SetReadDeadline(time.Now().Add(3 * time.Second))
 		msgType, bytes, err := c.ReadMessage()
+		log4go.Debug("msgType: %d, bytes: %s", msgType, string(bytes))
 		if err != nil {
 			return fmt.Errorf("get websocket reader: %w", err)
 		}
@@ -152,10 +153,10 @@ func (c *gorillaWebsocketConnection) Open(sess *Session) (err error) {
 
 	resp := make([]byte, 0, len(lengthStr)+2)
 	// resp = append(resp, lengthStr...)
-	resp = append(resp, '0')
+	resp = append(resp, []byte("40/socket.io,")...)
 	resp = append(resp, bytes...)
 	resp = append(resp, '\n')
-	log4go.Debug(string(resp))
+	log4go.Debug("ws -> client: %s", string(resp))
 	w, err := c.Conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return fmt.Errorf("get websocket writer: %w", err)
