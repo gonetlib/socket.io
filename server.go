@@ -3,8 +3,9 @@ package socketio
 import (
 	"errors"
 	"net/http"
+	"sync"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/liuliqiang/log4go"
 )
 
 type Server interface {
@@ -16,6 +17,8 @@ type Server interface {
 
 type server struct {
 	opts *serverOpts
+
+	connections sync.Map // session id -> connection
 }
 
 func NewServer(opts *serverOpts) (s Server, err error) {
@@ -24,11 +27,13 @@ func NewServer(opts *serverOpts) (s Server, err error) {
 	}
 
 	return &server{
-		opts: opts,
+		opts:        opts,
+		connections: sync.Map{},
 	}, nil
 }
 
 func (s *server) On(event string, handler EventHandler) {
+	log4go.Debug("on event: %s", event)
 }
 
 func (s *server) WithNamespace(nsp string) Namespace {
@@ -41,7 +46,7 @@ func (s *server) WithNamespace(nsp string) Namespace {
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sess, err := s.parseRequest(r)
 	if err != nil {
-		log.Error("parse request:", err)
+		log4go.Error("parse request:", err)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
@@ -58,34 +63,31 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleWebsocket(w http.ResponseWriter, r *http.Request, sess *Session) {
-	log.Debug("handle websocket")
-	conn, err := NewGorillaWebsocketConnection(w, r)
+	log4go.Debug("handle websocket")
+	conn, err := NewGorillaWebsocketConnection(s, w, r)
 	if err != nil {
-		log.Error("new websocket connection:", err)
+		log4go.Error("new websocket connection:", err)
 		return
 	}
 
 	if err = conn.Open(sess); err != nil { // engine.io open protocol
-		log.Error("open websocket:", err)
+		log4go.Error("open websocket:", err)
 		return
 	}
-	// if err := s.acceptConnection(conn); err != nil {
-	// TODO: handle error event
-	// log.Error("accept connection:", err)
-	// return
-	// }
-	log.Info("Websocket connected", log.WithField("conn", conn.RemoteAddr()))
+	s.connections.Store(sess.Sid, conn)
+
+	log4go.Info("Websocket connected :%s", conn.RemoteAddr())
 	if err = conn.Serve(); err != nil {
-		log.Error("serve websocket:", err)
+		log4go.Error("serve websocket: %v", err)
 	}
 }
 
 func (s *server) handlePolling(w http.ResponseWriter, r *http.Request, sess *Session) {
-	log.Debug("handle polling")
+	log4go.Debug("handle polling")
 }
 
 func (s *server) parseRequest(r *http.Request) (sess *Session, err error) {
-	log.Debug("parse request", r.URL.Query())
+	log4go.Debug("parse request", r.URL.Query())
 	sess = &Session{
 		TransportID: r.URL.Query().Get("t"),
 		Sid:         r.URL.Query().Get("sid"),

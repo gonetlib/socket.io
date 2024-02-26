@@ -4,7 +4,7 @@ type Namespace interface {
 	On(event string, handler EventHandler)
 }
 
-type EventHandler func(so Connection, err error)
+type EventHandler func(so Connection, msg []byte) (err error)
 
 type namespace struct {
 	nsp         string
